@@ -9,11 +9,12 @@
 }:
 {
   imports = [
+    ./services
+
     ./devices.nix
     ./interfaces.nix
     ./virtualization.nix
     ./firewall.nix
-    # ./omada.nix
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
   ];
@@ -73,6 +74,7 @@
       bat
       helix
       git
+      gitui
       nil
       tcpdump
       tree
@@ -86,7 +88,13 @@
     ];
   };
 
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+    };
+  };
 
   system = {
     # copySystemConfiguration = true;

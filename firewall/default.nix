@@ -1,14 +1,10 @@
-{
-  lib,
-  config,
-  pkgs,
-  ...
-}:
-
-let
-  rules = import ./firewall/firewall.nix;
-in
-{
+{lib, ...}: let
+  rules = import ./firewall.nix {
+    lib = lib.extend (final: prev: {
+      fw = import ./functions.nix {lib = final;};
+    });
+  };
+in {
   networking = {
     firewall.enable = false;
     nftables = {

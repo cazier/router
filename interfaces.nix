@@ -1,96 +1,10 @@
-{lib, ...}: let
-  custom = import ./utilities/custom_functions.nix {inherit lib;};
-
-  baseAddress = "192.168.1.1";
-  baseSubnet = "${baseAddress}/24";
-
-  ethernets = {
-    "wan0" = {
-      mac = "a0:36:9f:41:e6:d7";
-      config = {
-        DHCP = "ipv4";
-      };
-    };
-    "wan1" = {
-      mac = "bc:24:11:13:05:c1";
-      config = {
-        address = ["192.168.1.21/24"];
-        routes = [{Gateway = "192.168.1.1";}];
-        dns = ["9.9.9.9"];
-      };
-    };
-    "lan0" = {
-      mac = "bc:24:11:ec:e1:83";
-      config = {
-        address = ["192.168.0.1/24"];
-      };
-    };
-    "eth0" = {
-      mac = "a0:36:9f:41:e6:d4";
-      bond = "lagg0";
-    };
-    "eth1" = {
-      mac = "a0:36:9f:41:e6:d5";
-      bond = "lagg0";
-    };
-  };
-
-  laggs = {
-    switch = {
-      id = "0";
-      config = {
-        LACPTransmitRate = "fast";
-        MIIMonitorSec = "100ms";
-        Mode = "802.3ad";
-        TransmitHashPolicy = "layer2";
-      };
-    };
-  };
-
-  vlans = {
-    HOME = rec {
-      id = "10";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-    GUEST = rec {
-      id = "20";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-    WORK = rec {
-      id = "30";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-    IOT = rec {
-      id = "40";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-    DEV = rec {
-      id = "50";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-    DMZ = rec {
-      id = "60";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-    MGMT = rec {
-      id = "99";
-      tag = lib.toInt id;
-      dhcp = true;
-      lagg = "lagg0";
-    };
-  };
+{
+  lib,
+  constants,
+  ...
+}: let
+  inherit (constants) ethernets bond dhcp;
+  inherit (constants.network) baseAddress baseSubnet;
 
   ethernetLinks =
     lib.mapAttrs' (
@@ -104,87 +18,97 @@
 
   ethernetNetworks = lib.mapAttrs' (
     name: cfg:
-      lib.nameValuePair "00-${name}" (
-        {
+      lib.nameValuePair "00-${name}" ({
           name = name;
         }
-        // cfg.config
-      )
-  ) (lib.filterAttrs (_: value: value ? config) ethernets);
+        // (
+          if cfg ? dhcp && cfg.dhcp
+          then {
+            DHCP = "ipv4";
+          }
+          else if cfg ? address
+          then
+            {
+              address = [cfg.address];
+            }
+            // (lib.optionalAttrs (cfg ? gateway) {
+              routes = [{Gateway = cfg.gateway;}];
+              dns = constants.dns.upstream;
+            })
+          else {}
+        ))
+  ) (lib.filterAttrs (_: cfg: !(cfg ? bond)) ethernets);
 
-  laggDevs =
-    lib.mapAttrs' (
-      name: cfg:
-        lib.nameValuePair "10-lagg${cfg.id}" {
+  bondMemberNetworks = lib.mapAttrs' (
+    name: cfg:
+      lib.nameValuePair "30-${name}" {
+        name = name;
+        networkConfig = {
+          Bond = cfg.bond;
+          DHCP = "no";
+          IPv6PrivacyExtensions = "kernel";
+        };
+      }
+  ) (lib.filterAttrs (_: cfg: cfg ? bond) ethernets);
+
+  bondDev = {
+    "10-${constants.interfaces.bond}" = {
+      netdevConfig = {
+        Name = constants.interfaces.bond;
+        Kind = "bond";
+      };
+      bondConfig = {
+        Mode = bond.mode;
+        LACPTransmitRate = bond.lacpRate;
+        MIIMonitorSec = bond.monitorInterval;
+        TransmitHashPolicy = bond.hashPolicy;
+      };
+    };
+  };
+
+  bondNetwork = {
+    "40-${constants.interfaces.bond}" = {
+      matchConfig.Name = constants.interfaces.bond;
+      networkConfig = {
+        Address = lib.custom.updateSubnetMask (lib.custom.updateIpAtOctet baseSubnet 3 98) 32;
+        VLAN = map lib.custom.vlanIf (lib.lists.sort (p: q: p < q) constants.allVlanIds);
+      };
+    };
+  };
+
+  vlanDevs = lib.listToAttrs (map (
+      id:
+        lib.nameValuePair "20-${lib.custom.vlanIf id}" {
           netdevConfig = {
-            Name = "lagg${cfg.id}";
-            Kind = "bond";
-          };
-          bondConfig = cfg.config;
-        }
-    )
-    laggs;
-
-  laggNetworks =
-    lib.mapAttrs' (
-      name: config:
-        lib.nameValuePair "30-${name}" {
-          name = name;
-          networkConfig = {
-            Bond = config.bond;
-            DHCP = "no";
-            IPv6PrivacyExtensions = "kernel";
-          };
-        }
-    ) (lib.attrsets.filterAttrs (_: value: value ? bond) ethernets)
-    // lib.mapAttrs' (
-      _: config:
-        lib.nameValuePair "40-lagg${config.id}" {
-          matchConfig.Name = "lagg${config.id}";
-          networkConfig = {
-            Address = custom.updateSubnetMask (custom.updateIpAtOctet baseSubnet 3 98) 32;
-            VLAN = lib.naturalSort (lib.mapAttrsToList (_: vlan: "vlan0.${vlan.id}") vlans);
-          };
-        }
-    )
-    laggs;
-
-  vlanDevs =
-    lib.mapAttrs' (
-      name: cfg:
-        lib.nameValuePair "20-vlan0.${cfg.id}" {
-          netdevConfig = {
-            Name = "vlan0.${cfg.id}";
+            Name = lib.custom.vlanIf id;
             Kind = "vlan";
           };
-          vlanConfig.Id = cfg.tag;
+          vlanConfig.Id = id;
         }
     )
-    vlans;
+    constants.allVlanIds);
 
-  vlanNetworks =
-    lib.mapAttrs' (
-      name: cfg:
-        lib.nameValuePair "50-vlan0.${cfg.id}" {
-          matchConfig.Name = "vlan0.${cfg.id}";
+  vlanNetworks = lib.listToAttrs (map (
+      id:
+        lib.nameValuePair "50-${lib.custom.vlanIf id}" {
+          matchConfig.Name = lib.custom.vlanIf id;
           networkConfig = {
-            Address = custom.updateIpAtOctet baseSubnet 3 cfg.id;
+            Address = lib.custom.updateIpAtOctet baseSubnet 3 id;
             DHCPServer = true;
           };
           dhcpServerConfig = {
-            PoolOffset = 100;
-            PoolSize = 100;
-            DNS = custom.updateIpAtOctet baseAddress 3 cfg.id;
+            PoolOffset = dhcp.poolOffset;
+            PoolSize = dhcp.poolSize;
+            DNS = lib.custom.updateIpAtOctet baseAddress 3 id;
           };
         }
     )
-    vlans;
+    constants.allVlanIds);
 in {
   systemd.network = {
     wait-online.enable = false;
-
     links = ethernetLinks;
-    netdevs = laggDevs // vlanDevs;
-    networks = ethernetNetworks // laggNetworks // vlanNetworks;
+    netdevs = bondDev // vlanDevs;
+    networks = ethernetNetworks // bondMemberNetworks // bondNetwork // vlanNetworks;
   };
 }

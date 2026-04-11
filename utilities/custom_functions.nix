@@ -14,6 +14,8 @@
       builtins.concatStringsSep "/" (
         replaceElemAt (lib.splitString "/" address) 1 (builtins.toString mask)
       );
+    vlanIf = id: "vlan0.${toString id}";
+    vlanNet = id: "192.168.${toString id}.0/24";
   };
 in
   custom

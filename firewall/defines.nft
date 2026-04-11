@@ -1,5 +1,0 @@
-define WAN_IF       = wan1
-define VLAN10_IF    = vlan0.10
-
-define VLAN10_NET   = 192.168.10.0/24
-define RFC1918      = { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }

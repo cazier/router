@@ -2,7 +2,7 @@
 {
   pkgs,
   lib,
-  config,
+  timezone,
   ...
 }: {
   virtualisation.oci-containers.backend = "podman";
@@ -11,7 +11,7 @@
   virtualisation.oci-containers.containers."omada-controller" = {
     image = "mbentley/omada-controller:6.1";
     environment = {
-      "TZ" = "America/New_York";
+      "TZ" = timezone;
       "WEB_CONFIG_OVERRIDE" = "false";
     };
     volumes = [

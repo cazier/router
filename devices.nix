@@ -1,24 +1,26 @@
-{lib, ...}: let
-  custom = import ./utilities/custom_functions.nix {inherit lib;};
-
+{
+  lib,
+  constants,
+  ...
+}: let
   vlanStickyMacs = {
     "78:20:51:78:cf:72" = {
       name = "PoE Switch";
       hostname = "switch";
       address = "192.168.1.2";
-      vlans = [10 20 30 40 50 60 99];
+      vlans = constants.allVlanIds;
     };
     "50:91:e3:0b:51:f0" = {
       name = "Office WiFi";
       hostname = "office-wifi";
       address = "192.168.1.3";
-      vlans = [10 20 30 40 50 60 99];
+      vlans = constants.allVlanIds;
     };
     "20:23:51:40:db:30" = {
       name = "Basement WiFi";
       hostname = "basement-wifi";
       address = "192.168.1.4";
-      vlans = [10 20 30 40 50 60 99];
+      vlans = constants.allVlanIds;
     };
   };
 
@@ -31,7 +33,7 @@
         dhcpServerStaticLeases =
           lib.mapAttrsToList (
             mac: config: {
-              Address = custom.updateIpAtOctet config.address 3 vlan;
+              Address = lib.custom.updateIpAtOctet config.address 3 vlan;
               MACAddress = mac;
             }
           )

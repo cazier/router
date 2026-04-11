@@ -2,19 +2,18 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 {
-  config,
-  lib,
   pkgs,
+  hostname,
+  timezone,
   ...
-}:
-{
+}: {
   imports = [
+    ./firewall
     ./services
 
     ./devices.nix
     ./interfaces.nix
     ./virtualization.nix
-    ./firewall.nix
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
   ];
@@ -25,8 +24,8 @@
   ];
 
   fileSystems = {
-    "/".options = [ "compress=zstd" ];
-    "/home".options = [ "compress=zstd" ];
+    "/".options = ["compress=zstd"];
+    "/home".options = ["compress=zstd"];
     "/nix".options = [
       "compress=zstd"
       "noatime"
@@ -42,26 +41,29 @@
       systemd-boot.enable = true;
       efi.canTouchEfiVariables = true;
     };
-    kernelParams = [ "console=ttyS0,115200n8" ];
+    kernelParams = ["console=ttyS0,115200n8"];
   };
 
   networking = {
-    hostName = "router";
+    hostName = hostname;
     useDHCP = false;
     useNetworkd = true;
   };
 
-  time.timeZone = "America/New_York";
+  time.timeZone = timezone;
 
   users.users.brendan = {
     isNormalUser = true;
-    extraGroups = [ "wheel" ];
+    extraGroups = ["wheel"];
     shell = pkgs.zsh;
   };
 
-  programs.zsh = {
-    enable = true;
-    enableCompletion = true;
+  programs = {
+    nix-ld.enable = true;
+    zsh = {
+      enable = true;
+      enableCompletion = true;
+    };
   };
 
   environment = {
@@ -76,6 +78,7 @@
       git
       gitui
       nil
+      nixd
       tcpdump
       tree
 

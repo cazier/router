@@ -7,44 +7,46 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs =
-    {
-      self,
-      nixpkgs,
-      home-manager,
-      ...
-    }:
-    let
-      username = "brendan";
+  outputs = {
+    self,
+    nixpkgs,
+    home-manager,
+    ...
+  }: let
+    hostname = "router";
+    timezone = "America/New_York";
+    username = "brendan";
+    constants = import ./constants.nix;
 
-      lib = nixpkgs.lib;
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-    in
-    {
+    system = "x86_64-linux";
+    pkgs = nixpkgs.legacyPackages.${system};
 
-      nixosConfigurations = {
-        router = lib.nixosSystem {
-          inherit system;
+    lib = nixpkgs.lib.extend (final: prev: {
+      custom = import ./utilities/custom_functions.nix {lib = final;};
+    });
+  in {
+    nixosConfigurations = {
+      router = lib.nixosSystem {
+        inherit system lib;
 
-          specialArgs = {
-            inherit username;
-          };
-
-          modules = [
-            ./configuration.nix
-
-            home-manager.nixosModules.home-manager
-            {
-              home-manager = {
-                users."${username}" = import ./home.nix;
-                extraSpecialArgs = {
-                  inherit username;
-                };
-              };
-            }
-          ];
+        specialArgs = {
+          inherit hostname username constants timezone;
         };
+
+        modules = [
+          ./configuration.nix
+
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              users."${username}" = import ./home.nix;
+              extraSpecialArgs = {
+                inherit username constants;
+              };
+            };
+          }
+        ];
       };
     };
+  };
 }

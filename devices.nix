@@ -24,8 +24,6 @@
     };
   };
 
-  vlans = lib.unique (lib.flatten (lib.mapAttrsToList (_: config: config.vlans) vlanStickyMacs));
-
   macs =
     lib.map (vlan: {
       name = "50-vlan0.${toString vlan}";
@@ -40,7 +38,7 @@
           vlanStickyMacs;
       };
     })
-    vlans;
+    (lib.unique (lib.flatten (lib.mapAttrsToList (_: config: config.vlans) vlanStickyMacs)));
 in {
   systemd.network.networks = lib.listToAttrs macs;
 }

@@ -4,6 +4,7 @@
 
   WAN_IF = constants.interfaces.wan;
   DMZ_IF = lib.custom.vlanIf constants.vlans.DMZ;
+  NFLOG_GROUP = toString constants.nflogGroup;
 
   PRIVATE_NETS = lib.fw.nftablesSet rfc.privateNets;
   BOGONS = lib.fw.nftablesSet rfc.bogons;
@@ -67,7 +68,7 @@
                     iifname != ${WAN_IF} accept
 
                     # Log and drop all other inbound WAN traffic
-                    iifname ${WAN_IF} limit rate 10/second log prefix "fw-input-drop: " drop
+                    iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
                 }
 
                 chain forward {
@@ -91,7 +92,7 @@
       ${allVlanRules}
 
                     # Log dropped forward traffic
-                    limit rate 10/second log prefix "fw-forward-drop: "
+                    limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: "
                 }
             }
     ''
@@ -119,7 +120,7 @@
               iifname != ${WAN_IF} accept
 
               # Log and drop WAN inbound
-              iifname ${WAN_IF} limit rate 10/second log prefix "fw6-input-drop: " drop
+              iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw6-input-drop: " drop
           }
 
           chain forward {
@@ -132,7 +133,7 @@
               ct state established,related accept
 
               # Log dropped traffic
-              limit rate 10/second log prefix "fw6-forward-drop: "
+              limit rate 10/second log group ${NFLOG_GROUP} prefix "fw6-forward-drop: "
           }
       }
     ''

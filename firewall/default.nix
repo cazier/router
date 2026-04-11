@@ -5,6 +5,10 @@
     });
   };
 in {
+  imports = [
+    ./ulogd.nix
+  ];
+
   networking = {
     firewall.enable = false;
     nftables = {

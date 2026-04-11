@@ -62,6 +62,8 @@ rec {
     poolSize = 100;
   };
 
+  nflogGroup = 100;
+
   portForwards = [
     {
       port = 80;

@@ -10,19 +10,23 @@
   BOGONS = lib.fw.nftablesSet rfc.bogons;
 
   allVlanRules = builtins.concatStringsSep "\n" (
-    builtins.attrValues (builtins.mapAttrs (lib.fw.vlanRules {
+    builtins.attrValues (
+      builtins.mapAttrs (lib.fw.vlanRules {
         wanIf = WAN_IF;
         privateNets = PRIVATE_NETS;
       })
-      constants.vlans)
+      constants.vlans
+    )
   );
 
   allDnatRules = builtins.concatStringsSep "\n" (map (lib.fw.dnatRule WAN_IF) constants.portForwards);
-  allForwardRules = builtins.concatStringsSep "\n" (map (lib.fw.forwardRule {
+  allForwardRules = builtins.concatStringsSep "\n" (
+    map (lib.fw.forwardRule {
       wanIf = WAN_IF;
       dmzIf = DMZ_IF;
     })
-    constants.portForwards);
+    constants.portForwards
+  );
 
   _nat = [
     ''
@@ -120,7 +124,7 @@
               iifname != ${WAN_IF} accept
 
               # Log and drop WAN inbound
-              iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw6-input-drop: " drop
+              iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
           }
 
           chain forward {
@@ -133,7 +137,7 @@
               ct state established,related accept
 
               # Log dropped traffic
-              limit rate 10/second log group ${NFLOG_GROUP} prefix "fw6-forward-drop: "
+              limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: "
           }
       }
     ''

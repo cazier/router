@@ -54,12 +54,12 @@
 
   users.users.brendan = {
     isNormalUser = true;
-    extraGroups = ["wheel"];
+    extraGroups = ["wheel" "pcap"];
     shell = pkgs.zsh;
   };
 
   programs = {
-    nix-ld.enable = true;
+    tcpdump. enable = true;
     zsh = {
       enable = true;
       enableCompletion = true;
@@ -74,12 +74,12 @@
     systemPackages = with pkgs; [
       alejandra
       bat
+      btop
       helix
       git
       gitui
       nil
       nixd
-      tcpdump
       tree
 
       (pkgs.writeShellApplication {

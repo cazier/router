@@ -62,18 +62,20 @@ rec {
     poolSize = 100;
   };
 
+  enableIPv6 = true;
+
   nflogGroup = 100;
 
   portForwards = [
-    {
-      port = 80;
-      proto = "tcp";
-      dest = "192.168.${toString vlans.DMZ}.10";
-    }
-    {
-      port = 443;
-      proto = "tcp";
-      dest = "192.168.${toString vlans.DMZ}.10";
-    }
+    # {
+    #   port = 80;
+    #   proto = "tcp";
+    #   dest = "192.168.${toString vlans.DMZ}.10";
+    # }
+    # {
+    #   port = 443;
+    #   proto = "tcp";
+    #   dest = "192.168.${toString vlans.DMZ}.10";
+    # }
   ];
 }

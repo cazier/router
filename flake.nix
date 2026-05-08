@@ -5,12 +5,17 @@
     nixpkgs.url = "nixpkgs/nixos-25.11-small";
     home-manager.url = "github:nix-community/home-manager/release-25.11";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    vscode-server.url = "github:nix-community/nixos-vscode-server";
+    nixpkgs-unstable.url = "nixpkgs/nixos-unstable-small";
   };
 
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-unstable,
     home-manager,
+    vscode-server,
     ...
   }: let
     hostname = "router";
@@ -20,6 +25,7 @@
 
     system = "x86_64-linux";
     pkgs = nixpkgs.legacyPackages.${system};
+    unstable = nixpkgs-unstable.legacyPackages.${system};
 
     lib = nixpkgs.lib.extend (final: prev: {
       custom = import ./utilities/custom_functions.nix {lib = final;};
@@ -30,7 +36,7 @@
         inherit system lib;
 
         specialArgs = {
-          inherit hostname username constants timezone;
+          inherit hostname username constants timezone unstable;
         };
 
         modules = [
@@ -41,10 +47,13 @@
             home-manager = {
               users."${username}" = import ./home.nix;
               extraSpecialArgs = {
-                inherit username constants;
+                inherit username constants unstable;
               };
             };
           }
+
+          vscode-server.nixosModules.default
+          ({...}: {services.vscode-server.enable = true;})
         ];
       };
     };

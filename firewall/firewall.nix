@@ -6,142 +6,134 @@
   DMZ_IF = lib.custom.vlanIf constants.vlans.DMZ;
   NFLOG_GROUP = toString constants.nflogGroup;
 
-  PRIVATE_NETS = lib.fw.nftablesSet rfc.privateNets;
-  BOGONS = lib.fw.nftablesSet rfc.bogons;
-
   allVlanRules = builtins.concatStringsSep "\n" (
     builtins.attrValues (
       builtins.mapAttrs (lib.fw.vlanRules {
         wanIf = WAN_IF;
-        privateNets = PRIVATE_NETS;
+        privateNets = lib.fw.nftablesSet rfc.PRIVATE_NETWORKS;
       })
       constants.vlans
     )
   );
 
-  allDnatRules = builtins.concatStringsSep "\n" (map (lib.fw.dnatRule WAN_IF) constants.portForwards);
-  allForwardRules = builtins.concatStringsSep "\n" (
-    map (lib.fw.forwardRule {
+  portForwardDNATRules = builtins.concatStringsSep "\n" (
+    map (lib.fw.portForwardDNATRules WAN_IF) constants.portForwards
+  );
+  portForwardFilterRules = builtins.concatStringsSep "\n" (
+    map (lib.fw.portForwardFilterRule {
       wanIf = WAN_IF;
       dmzIf = DMZ_IF;
     })
     constants.portForwards
   );
 
-  _nat = [
+  dropBogons =
     ''
-            table ip nat {
-                chain prerouting {
-                    type nat hook prerouting priority dstnat; policy accept;
-
-                    # Port forwards to DMZ
-      ${allDnatRules}
-                }
-
-                chain postrouting {
-                    type nat hook postrouting priority srcnat; policy accept;
-                    oifname ${WAN_IF} masquerade
-                }
-            }
+      iifname ${WAN_IF} ip saddr ${lib.fw.nftablesSet rfc.IPV4_BOGONS} drop
     ''
-  ];
+    + lib.optionalString constants.enableIPv6 ''
+      iifname ${WAN_IF} ip6 saddr ${lib.fw.nftablesSet rfc.IPV6_BOGONS} drop
+    '';
 
-  _filter = [
+  icmpInputRules =
     ''
-            table ip filter {
-                chain input {
-                    type filter hook input priority filter; policy drop;
-
-                    # Drop invalid packets early
-                    ct state invalid drop
-
-                    # Allow established/related connections
-                    ct state established,related accept
-
-                    # Allow loopback
-                    iifname lo accept
-
-                    # Drop bogon/martian source addresses on WAN
-                    iifname ${WAN_IF} ip saddr ${BOGONS} drop
-
-                    # Rate-limited ICMP (specific types only)
-                    iifname ${WAN_IF} icmp type echo-request limit rate 5/second accept
-                    iifname != ${WAN_IF} icmp type { echo-request, echo-reply, destination-unreachable, time-exceeded, parameter-problem } accept
-
-                    # Allow traffic from internal VLANs to router
-                    iifname != ${WAN_IF} accept
-
-                    # Log and drop all other inbound WAN traffic
-                    iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
-                }
-
-                chain forward {
-                    type filter hook forward priority filter; policy drop;
-
-                    # Drop invalid packets early
-                    ct state invalid drop
-
-                    # Allow established/related connections
-                    ct state established,related accept
-
-                    # Drop bogon/martian source addresses on WAN
-                    iifname ${WAN_IF} ip saddr ${BOGONS} drop
-
-                    # Rate limit new TCP connections (SYN flood protection)
-                    tcp flags syn ct state new limit rate 100/second accept
-
-                    # Allow port forwarded traffic to DMZ
-      ${allForwardRules}
-
-      ${allVlanRules}
-
-                    # Log dropped forward traffic
-                    limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: "
-                }
-            }
+      iifname ${WAN_IF} icmp type echo-request limit rate 5/second accept
+      iifname != ${WAN_IF} icmp type { echo-request, echo-reply, destination-unreachable, time-exceeded, parameter-problem } accept
     ''
-  ];
+    + lib.optionalString constants.enableIPv6 ''
+      icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert } accept
+      iifname ${WAN_IF} icmpv6 type { nd-router-advert, nd-router-solicit } accept
+      iifname ${WAN_IF} icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem } accept
+      iifname ${WAN_IF} icmpv6 type echo-request limit rate 5/second accept
+      iifname != ${WAN_IF} icmpv6 type { echo-request, echo-reply, destination-unreachable, packet-too-big, time-exceeded, parameter-problem, nd-router-solicit, nd-router-advert } accept
+    '';
 
-  _filter6 = [
-    ''
-      table ip6 filter {
-          chain input {
-              type filter hook input priority filter; policy drop;
+  icmpForwardRules = lib.optionalString constants.enableIPv6 ''
+    icmpv6 type packet-too-big accept
+  '';
 
-              # Drop invalid packets
-              ct state invalid drop
+  nat = ''
+    # IPv4-only NAT table; inet is not used because IPv6 NAT is not needed
+    table ip nat {
+      # Runs before routing decisions; used for destination NAT (port forwarding)
+      chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
 
-              # Allow established/related connections
-              ct state established,related accept
-
-              # Allow loopback
-              iifname lo accept
-
-              # Allow ICMPv6 (required for IPv6 to function)
-              iifname != ${WAN_IF} icmpv6 type { echo-request, echo-reply, nd-neighbor-solicit, nd-neighbor-advert, nd-router-solicit, nd-router-advert } accept
-
-              # Allow internal traffic
-              iifname != ${WAN_IF} accept
-
-              # Log and drop WAN inbound
-              iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
-          }
-
-          chain forward {
-              type filter hook forward priority filter; policy drop;
-
-              # Drop invalid packets
-              ct state invalid drop
-
-              # Allow established/related connections
-              ct state established,related accept
-
-              # Log dropped traffic
-              limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: "
-          }
+        # Rewrite destination address/port to redirect inbound WAN traffic to internal hosts
+        ${portForwardDNATRules}
       }
-    ''
-  ];
+
+      # Runs after routing decisions; used for source NAT on outbound traffic
+      chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        # Replace the source address of packets leaving via WAN with the router's WAN IP
+        oifname ${WAN_IF} masquerade
+      }
+    }
+  '';
+
+  filter = ''
+    # inet table applies to both IPv4 and IPv6 traffic
+    table inet filter {
+      # Handles packets destined for the router itself
+      chain input {
+        # Default policy: drop everything not explicitly accepted
+        type filter hook input priority filter; policy drop;
+
+        # Drop incoming traffic without a known connection
+        ct state invalid drop
+
+        # Accept incoming traffic with an associated outgoing traffic
+        ct state established,related accept
+
+        # Allow all traffic on loopback interface
+        iifname lo accept
+
+        # Drop packets from WAN with unroutable (bogon) source addresses
+        ${dropBogons}
+        # Allow ICMP/ICMPv6 for diagnostics and IPv6 neighbor discovery
+        ${icmpInputRules}
+
+        # Allow traffic from internal VLANs to router
+        iifname != ${WAN_IF} accept
+
+        # Log and drop all other inbound WAN traffic
+        iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
+      }
+
+      # Handles packets being routed through the router between interfaces
+      chain forward {
+        # Default policy: drop everything not explicitly accepted
+        type filter hook forward priority filter; policy drop;
+
+        # Drop packets that do not match any valid connection state
+        ct state invalid drop
+        # Allow packets belonging to already-established or related connections
+        ct state established,related accept
+
+        # Drop packets from WAN with unroutable (bogon) source addresses
+        ${dropBogons}
+        # Allow ICMPv6 packet-too-big messages needed for Path MTU Discovery
+        ${icmpForwardRules}
+
+        # Rate limit new TCP connections (SYN flood protection)
+        tcp flags syn ct state new limit rate 100/second accept
+
+        # Allow forwarding of traffic for each configured port forward destination
+        ${portForwardFilterRules}
+
+        # VLAN rules: allow own subnet, block other private nets, allow WAN.
+        # The oifname wan1 rule is protocol-agnostic and covers IPv6-to-WAN forwarding.
+        ${allVlanRules}
+
+        # Log dropped forward traffic
+        limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: "
+      }
+    }
+  '';
 in {
-  ruleset = _nat ++ _filter ++ _filter6;
+  ruleset = [
+    nat
+    filter
+  ];
 }

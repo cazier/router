@@ -1,0 +1,22 @@
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "check-toml" },
+  { id = "check-yaml" },
+  { id = "end-of-file-fixer" },
+  { id = "trailing-whitespace" },
+
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+    {
+        id = "alejandra",
+        name = "alejandra",
+        language = "system",
+        entry = "alejandra",
+        files = "\\.nix$",
+        args = [ "-q" ]
+      },
+]

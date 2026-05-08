@@ -1,6 +1,6 @@
 {...}: {
   imports = [
     ./dns.nix
-    # ./omada.nix
+    ./omada.nix
   ];
 }

@@ -14,13 +14,15 @@
   '';
 
   # Generate DNAT rule for a port forward
-  dnatRule = wanIf: pf: ''
-    iifname ${wanIf} ${pf.proto} dport ${toString pf.port} dnat to ${pf.dest}'';
+  portForwardDNATRules = wanIf: pf: ''
+    iifname ${wanIf} ${pf.proto} dport ${toString pf.port} dnat to ${pf.dest}
+  '';
 
   # Generate forward allow rule for a port forward
-  forwardRule = {
+  portForwardFilterRule = {
     wanIf,
     dmzIf,
   }: pf: ''
-    iifname ${wanIf} oifname ${dmzIf} ip daddr ${pf.dest} ${pf.proto} dport ${toString pf.port} ct state new limit rate 25/second accept'';
+    iifname ${wanIf} oifname ${dmzIf} ip daddr ${pf.dest} ${pf.proto} dport ${toString pf.port} ct state new limit rate 25/second accept
+  '';
 }

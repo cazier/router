@@ -4,6 +4,7 @@
 
   WAN_IF = constants.interfaces.wan;
   DMZ_IF = lib.custom.vlanIf constants.vlans.DMZ;
+  MGMT_IF = lib.custom.vlanIf constants.vlans.MGMT;
   NFLOG_GROUP = toString constants.nflogGroup;
 
   allVlanRules = builtins.concatStringsSep "\n" (
@@ -47,6 +48,29 @@
       iifname ${WAN_IF} icmpv6 type echo-request limit rate 5/second accept
       iifname != ${WAN_IF} icmpv6 type { echo-request, echo-reply, destination-unreachable, packet-too-big, time-exceeded, parameter-problem, nd-router-solicit, nd-router-advert } accept
     '';
+
+  localInputRules = ''
+    # Dumb allow all SSH for now...
+    tcp dport { 22, 3000, 3100, 8043, 8843 } accept
+
+    # DNS: all internal VLANs
+    iifname != ${WAN_IF} tcp dport 53 accept
+    iifname != ${WAN_IF} udp dport 53 accept
+
+    # DHCP: all internal VLANs
+    iifname != ${WAN_IF} udp dport 67 accept
+
+    # SSH: MGMT VLAN only
+    iifname ${MGMT_IF} tcp dport 22 accept
+
+    # AdGuard Home admin UI: MGMT VLAN only
+    iifname ${MGMT_IF} tcp dport 3000 accept
+
+    # Omada controller: MGMT VLAN only
+    iifname ${MGMT_IF} tcp dport { 8088, 8043, 8843 } accept
+    iifname ${MGMT_IF} udp dport { 27001, 29810 } accept
+    iifname ${MGMT_IF} tcp dport { 29811, 29812, 29813, 29814 } accept
+  '';
 
   icmpForwardRules = lib.optionalString constants.enableIPv6 ''
     icmpv6 type packet-too-big accept
@@ -93,12 +117,10 @@
         ${dropBogons}
         # Allow ICMP/ICMPv6 for diagnostics and IPv6 neighbor discovery
         ${icmpInputRules}
-
-        # Allow traffic from internal VLANs to router
-        iifname != ${WAN_IF} accept
-
-        # Log and drop all other inbound WAN traffic
-        iifname ${WAN_IF} limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
+        # Allow specific services from internal VLANs; all other router-destined traffic is dropped
+        ${localInputRules}
+        # Log and drop all other inbound traffic. The drop is technically redundant...
+        limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
       }
 
       # Handles packets being routed through the router between interfaces
@@ -126,8 +148,8 @@
         # The oifname wan1 rule is protocol-agnostic and covers IPv6-to-WAN forwarding.
         ${allVlanRules}
 
-        # Log dropped forward traffic
-        limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: "
+        # Log and drop all other forward traffic
+        limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: " drop
       }
     }
   '';

@@ -28,7 +28,7 @@ in {
       delaycompress = true;
       missingok = true;
       notifempty = true;
-      create = "0640 root root";
+      create = "0644 root root";
       postrotate = "systemctl reload ulogd 2>/dev/null || true";
     };
   };

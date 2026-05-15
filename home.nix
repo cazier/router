@@ -25,6 +25,7 @@
         credential.helper = "store";
         init.defaultbranch = "main";
         commit.gpgsign = true;
+        diff.external = "${pkgs.difftastic}/bin/difft";
         safe.directory = "/etc/nixos";
       };
     };

@@ -65,6 +65,7 @@ rec {
   enableIPv6 = true;
 
   nflogGroup = 100;
+  enableFileLogs = true;
 
   portForwards = [
     # {

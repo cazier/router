@@ -5,14 +5,10 @@
   WAN_IF = constants.interfaces.wan;
   DMZ_IF = lib.custom.vlanIf constants.vlans.DMZ;
   MGMT_IF = lib.custom.vlanIf constants.vlans.MGMT;
-  NFLOG_GROUP = toString constants.nflogGroup;
 
   allVlanRules = builtins.concatStringsSep "\n" (
     builtins.attrValues (
-      builtins.mapAttrs (lib.fw.vlanRules {
-        wanIf = WAN_IF;
-        privateNets = lib.fw.nftablesSet rfc.PRIVATE_NETWORKS;
-      })
+      builtins.mapAttrs (lib.fw.vlanRules WAN_IF (lib.fw.nftablesSet rfc.PRIVATE_NETWORKS))
       constants.vlans
     )
   );
@@ -30,10 +26,10 @@
 
   dropBogons =
     ''
-      iifname ${WAN_IF} ip saddr ${lib.fw.nftablesSet rfc.IPV4_BOGONS} drop
+      iifname ${WAN_IF} ip saddr ${lib.fw.nftablesSet rfc.IPV4_BOGONS} limit rate 10/second ${lib.fw.mkLog "bogon" "drop"}
     ''
     + lib.optionalString constants.enableIPv6 ''
-      iifname ${WAN_IF} ip6 saddr ${lib.fw.nftablesSet rfc.IPV6_BOGONS} drop
+      iifname ${WAN_IF} ip6 saddr ${lib.fw.nftablesSet rfc.IPV6_BOGONS} limit rate 10/second ${lib.fw.mkLog "bogon" "drop"}
     '';
 
   icmpInputRules =
@@ -51,25 +47,25 @@
 
   localInputRules = ''
     # Dumb allow all SSH for now...
-    tcp dport { 22, 3000, 3100, 8043, 8843 } accept
+    tcp dport { 22, 3000, 3100, 8043, 8843 } ${lib.fw.mkLog "input" "accept"}
 
     # DNS: all internal VLANs
-    iifname != ${WAN_IF} tcp dport 53 accept
-    iifname != ${WAN_IF} udp dport 53 accept
+    iifname != ${WAN_IF} tcp dport 53 ${lib.fw.mkLog "input" "accept"}
+    iifname != ${WAN_IF} udp dport 53 ${lib.fw.mkLog "input" "accept"}
 
     # DHCP: all internal VLANs
-    iifname != ${WAN_IF} udp dport 67 accept
+    iifname != ${WAN_IF} udp dport 67 ${lib.fw.mkLog "input" "accept"}
 
     # SSH: MGMT VLAN only
-    iifname ${MGMT_IF} tcp dport 22 accept
+    iifname ${MGMT_IF} tcp dport 22 ${lib.fw.mkLog "input" "accept"}
 
     # AdGuard Home admin UI: MGMT VLAN only
-    iifname ${MGMT_IF} tcp dport 3000 accept
+    iifname ${MGMT_IF} tcp dport 3000 ${lib.fw.mkLog "input" "accept"}
 
     # Omada controller: MGMT VLAN only
-    iifname ${MGMT_IF} tcp dport { 8088, 8043, 8843 } accept
-    iifname ${MGMT_IF} udp dport { 27001, 29810 } accept
-    iifname ${MGMT_IF} tcp dport { 29811, 29812, 29813, 29814 } accept
+    iifname ${MGMT_IF} tcp dport { 8088, 8043, 8843 } ${lib.fw.mkLog "input" "accept"}
+    iifname ${MGMT_IF} udp dport { 27001, 29810 } ${lib.fw.mkLog "input" "accept"}
+    iifname ${MGMT_IF} tcp dport { 29811, 29812, 29813, 29814 } ${lib.fw.mkLog "input" "accept"}
   '';
 
   icmpForwardRules = lib.optionalString constants.enableIPv6 ''
@@ -105,7 +101,7 @@
         type filter hook input priority filter; policy drop;
 
         # Drop incoming traffic without a known connection
-        ct state invalid drop
+        ct state invalid limit rate 10/second ${lib.fw.mkLog "invalid" "drop"}
 
         # Accept incoming traffic with an associated outgoing traffic
         ct state established,related accept
@@ -120,7 +116,7 @@
         # Allow specific services from internal VLANs; all other router-destined traffic is dropped
         ${localInputRules}
         # Log and drop all other inbound traffic. The drop is technically redundant...
-        limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-input-drop: " drop
+        limit rate 10/second ${lib.fw.mkLog "input" "drop"}
       }
 
       # Handles packets being routed through the router between interfaces
@@ -129,7 +125,7 @@
         type filter hook forward priority filter; policy drop;
 
         # Drop packets that do not match any valid connection state
-        ct state invalid drop
+        ct state invalid limit rate 10/second ${lib.fw.mkLog "invalid" "drop"}
         # Allow packets belonging to already-established or related connections
         ct state established,related accept
 
@@ -139,7 +135,7 @@
         ${icmpForwardRules}
 
         # Rate limit new TCP connections (SYN flood protection)
-        tcp flags syn ct state new limit rate 100/second accept
+        tcp flags syn ct state new limit rate 100/second ${lib.fw.mkLog "forward" "accept"}
 
         # Allow forwarding of traffic for each configured port forward destination
         ${portForwardFilterRules}
@@ -149,7 +145,7 @@
         ${allVlanRules}
 
         # Log and drop all other forward traffic
-        limit rate 10/second log group ${NFLOG_GROUP} prefix "fw-forward-drop: " drop
+        limit rate 10/second ${lib.fw.mkLog "forward" "drop"}
       }
     }
   '';

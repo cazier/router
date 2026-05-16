@@ -1,7 +1,7 @@
 {lib, ...}: let
   constants = import ../constants.nix;
 
-  mkLog = prefix: action: "log group ${toString constants.nflogGroup} prefix \"${prefix}-${action}: \" ${action}";
+  mkLog = prefix: action: "log group ${toString constants.nflogGroup} prefix \"${prefix}-${action}\" ${action}";
 in {
   inherit mkLog;
 

@@ -18,7 +18,6 @@
         ip_daddr_str  TEXT,
         ip_protocol   INTEGER,
         ip_ttl        INTEGER,
-        ip_totlen     INTEGER,
         tcp_sport     INTEGER,
         tcp_dport     INTEGER,
         udp_sport     INTEGER,
@@ -28,10 +27,6 @@
         raw_pktlen    INTEGER
     );
     CREATE INDEX IF NOT EXISTS log_time ON log (oob_time_sec);
-    CREATE VIEW IF NOT EXISTS fw_events AS
-        SELECT *,
-            CASE WHEN instr(oob_prefix, 'drop') > 0 THEN 'drop' ELSE 'accept' END AS action
-        FROM log;
     PRAGMA journal_mode = WAL;
   '';
 in {

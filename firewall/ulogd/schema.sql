@@ -16,27 +16,26 @@ CREATE TABLE IF NOT EXISTS log (
     icmp_code     INTEGER,
     raw_pktlen    INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS log_time ON log (oob_time_sec, oob_time_usec);
 
 CREATE TABLE IF NOT EXISTS protocol_options (
     oob_time_sec INTEGER NOT NULL,
     oob_time_usec INTEGER NOT NULL,
     ip_protocol INTEGER,
-    UNIQUE(ip_protocol)
-) ON CONFLICT REPLACE;
+    UNIQUE(ip_protocol) ON CONFLICT REPLACE
+);
 
 CREATE TABLE IF NOT EXISTS iiface_options (
     oob_time_sec INTEGER NOT NULL,
     oob_time_usec INTEGER NOT NULL,
     oob_in TEXT NOT NULL,
-    UNIQUE(oob_in)
-) ON CONFLICT REPLACE;
+    UNIQUE(oob_in) ON CONFLICT REPLACE
+);
 
 CREATE TABLE IF NOT EXISTS oiface_options (
     oob_time_sec INTEGER NOT NULL,
     oob_time_usec INTEGER NOT NULL,
     oob_out TEXT NOT NULL,
-    UNIQUE(oob_out)
-) ON CONFLICT REPLACE;
+    UNIQUE(oob_out) ON CONFLICT REPLACE
+);
 
 PRAGMA journal_mode = WAL;

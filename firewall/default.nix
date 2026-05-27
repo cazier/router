@@ -6,7 +6,7 @@
   };
 in {
   imports = [
-    ./ulogd.nix
+    ./ulogd
   ];
 
   networking = {

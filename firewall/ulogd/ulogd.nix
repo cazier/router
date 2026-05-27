@@ -3,39 +3,23 @@
   lib,
   ...
 }: let
-  constants = import ../constants.nix;
+  constants = import ../../constants.nix;
 
   dbPath = "/var/log/ulogd/firewall.db";
 
-  schemaFile = pkgs.writeText "log_schema.sql" ''
-    CREATE TABLE IF NOT EXISTS log (
-        oob_time_sec  INTEGER,
-        oob_time_usec INTEGER,
-        oob_prefix    TEXT,
-        oob_in        TEXT,
-        oob_out       TEXT,
-        ip_saddr_str  TEXT,
-        ip_daddr_str  TEXT,
-        ip_protocol   INTEGER,
-        ip_ttl        INTEGER,
-        tcp_sport     INTEGER,
-        tcp_dport     INTEGER,
-        udp_sport     INTEGER,
-        udp_dport     INTEGER,
-        icmp_type     INTEGER,
-        icmp_code     INTEGER,
-        raw_pktlen    INTEGER
-    );
-    CREATE INDEX IF NOT EXISTS log_time ON log (oob_time_sec);
-    PRAGMA journal_mode = WAL;
-  '';
+  schemaFile = ./schema.sql;
 in {
   services.ulogd = {
     enable = true;
     settings =
       {
         global.stack =
-          ["log1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,db1:SQLITE3"]
+          [
+            "log1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,db1:SQLITE3"
+            "log1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,db2:SQLITE3"
+            "log1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,db3:SQLITE3"
+            "log1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,db4:SQLITE3"
+          ]
           ++ lib.optionals constants.enableFileLogs [
             "log1:NFLOG,base1:BASE,ifi1:IFINDEX,ip2str1:IP2STR,print1:PRINTPKT,emu1:LOGEMU"
           ];
@@ -45,6 +29,18 @@ in {
         db1 = {
           db = dbPath;
           table = "log";
+        };
+        db2 = {
+          db = dbPath;
+          table = "protocol_options";
+        };
+        db3 = {
+          db = dbPath;
+          table = "iiface_options";
+        };
+        db4 = {
+          db = dbPath;
+          table = "oiface_options";
         };
       }
       // lib.optionalAttrs constants.enableFileLogs {

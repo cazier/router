@@ -21,7 +21,7 @@ rec {
     };
     wan1 = {
       mac = "bc:24:11:13:05:c1";
-      address = "192.168.1.21/24";
+      address = "192.168.1.22/24";
       gateway = network.baseAddress;
     };
     lan0 = {

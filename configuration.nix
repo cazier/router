@@ -75,11 +75,12 @@
       alejandra
       bat
       btop
-      helix
+      evil-helix
       git
       gitui
       nil
       nixd
+      tmux
       tree
 
       (pkgs.writeShellApplication {

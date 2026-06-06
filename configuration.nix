@@ -80,6 +80,7 @@
       gitui
       nil
       nixd
+      neovim
       tmux
       tree
 

@@ -8,6 +8,9 @@
 
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     nixpkgs-unstable.url = "nixpkgs/nixos-unstable-small";
+
+    firewalleye.url = "github:cazier/firewalleye/v0.5.0";
+    firewalleye.flake = false;
   };
 
   outputs = {
@@ -16,6 +19,7 @@
     nixpkgs-unstable,
     home-manager,
     vscode-server,
+    firewalleye,
     ...
   }: let
     hostname = "router";
@@ -36,7 +40,7 @@
         inherit system lib;
 
         specialArgs = {
-          inherit hostname username constants timezone unstable;
+          inherit hostname username constants timezone unstable firewalleye;
         };
 
         modules = [

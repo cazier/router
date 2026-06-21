@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "firewalleye": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781925225,
+        "narHash": "sha256-A3CjZQDvF2shGmHvb8jIuHIZ01ugoN90Xv2+ajbTNDg=",
+        "owner": "cazier",
+        "repo": "firewalleye",
+        "rev": "85d558e90a9fbd6bf745e78404fc96c6833e2c3d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "cazier",
+        "ref": "v0.5.0",
+        "repo": "firewalleye",
+        "type": "github"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -85,6 +102,7 @@
     },
     "root": {
       "inputs": {
+        "firewalleye": "firewalleye",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
         "nixpkgs-unstable": "nixpkgs-unstable",

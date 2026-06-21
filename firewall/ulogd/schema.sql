@@ -17,25 +17,36 @@ CREATE TABLE IF NOT EXISTS log (
     raw_pktlen    INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS protocol_options (
-    oob_time_sec INTEGER NOT NULL,
+CREATE TABLE IF NOT EXISTS filters (
+    oob_time_sec  INTEGER NOT NULL,
     oob_time_usec INTEGER NOT NULL,
-    ip_protocol INTEGER,
-    UNIQUE(ip_protocol) ON CONFLICT REPLACE
+    kind          TEXT NOT NULL,
+    value         TEXT NOT NULL,
+    PRIMARY KEY (kind, value)
 );
 
-CREATE TABLE IF NOT EXISTS iiface_options (
-    oob_time_sec INTEGER NOT NULL,
-    oob_time_usec INTEGER NOT NULL,
-    oob_in TEXT NOT NULL,
-    UNIQUE(oob_in) ON CONFLICT REPLACE
-);
+CREATE TRIGGER upsert_filters AFTER INSERT ON log
+BEGIN
+    INSERT INTO filters (oob_time_sec, oob_time_usec, kind, value)
+    SELECT NEW.oob_time_sec, NEW.oob_time_usec, 'iiface', NEW.oob_in
+    WHERE NEW.oob_in <> ''
+    ON CONFLICT (kind, value) DO UPDATE SET
+        oob_time_sec = NEW.oob_time_sec,
+        oob_time_usec = NEW.oob_time_usec;
 
-CREATE TABLE IF NOT EXISTS oiface_options (
-    oob_time_sec INTEGER NOT NULL,
-    oob_time_usec INTEGER NOT NULL,
-    oob_out TEXT NOT NULL,
-    UNIQUE(oob_out) ON CONFLICT REPLACE
-);
+    INSERT INTO filters (oob_time_sec, oob_time_usec, kind, value)
+    SELECT NEW.oob_time_sec, NEW.oob_time_usec, 'oiface', NEW.oob_out
+    WHERE NEW.oob_out <> ''
+    ON CONFLICT (kind, value) DO UPDATE SET
+        oob_time_sec = NEW.oob_time_sec,
+        oob_time_usec = NEW.oob_time_usec;
+
+    INSERT INTO filters (oob_time_sec, oob_time_usec, kind, value)
+    SELECT NEW.oob_time_sec, NEW.oob_time_usec, 'protocol', CAST(NEW.ip_protocol AS TEXT)
+    WHERE NEW.ip_protocol IS NOT NULL
+    ON CONFLICT (kind, value) DO UPDATE SET
+        oob_time_sec = NEW.oob_time_sec,
+        oob_time_usec = NEW.oob_time_usec;
+END;
 
 PRAGMA journal_mode = WAL;

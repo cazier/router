@@ -11,6 +11,9 @@
 
     firewalleye.url = "github:cazier/firewalleye/v0.5.0";
     firewalleye.flake = false;
+
+    agenix.url = "github:ryantm/agenix";
+    agenix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = {
@@ -20,6 +23,7 @@
     home-manager,
     vscode-server,
     firewalleye,
+    agenix,
     ...
   }: let
     hostname = "router";
@@ -58,6 +62,8 @@
 
           vscode-server.nixosModules.default
           ({...}: {services.vscode-server.enable = true;})
+
+          agenix.nixosModules.default
         ];
       };
     };

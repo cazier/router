@@ -21,7 +21,7 @@ rec {
     };
     wan1 = {
       mac = "bc:24:11:13:05:c1";
-      address = "192.168.1.22/24";
+      address = "192.168.1.31/24";
       gateway = network.baseAddress;
     };
     lan0 = {
@@ -65,7 +65,19 @@ rec {
   enableIPv6 = true;
 
   nflogGroup = 100;
-  enableFileLogs = true;
+
+  wireguard = {
+    interface = "wg0";
+    port = 51820;
+    address = "10.100.0.1/24";
+    peers = [
+      {
+        publicKey = "9drfei4FNNDjMyDH9aknYvP2qU6O+KT8/jxc7DpSU2A=";
+        ip = "10.100.0.2";
+        vlan = vlans.HOME;
+      }
+    ];
+  };
 
   portForwards = [
     # {

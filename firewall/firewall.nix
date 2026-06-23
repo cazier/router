@@ -5,6 +5,8 @@
   WAN_IF = constants.interfaces.wan;
   DMZ_IF = lib.custom.vlanIf constants.vlans.DMZ;
   MGMT_IF = lib.custom.vlanIf constants.vlans.MGMT;
+  WG_IF = constants.wireguard.interface;
+  WG_PORT = toString constants.wireguard.port;
 
   allVlanRules = builtins.concatStringsSep "\n" (
     builtins.attrValues (
@@ -45,27 +47,42 @@
       iifname != ${WAN_IF} icmpv6 type { echo-request, echo-reply, destination-unreachable, packet-too-big, time-exceeded, parameter-problem, nd-router-solicit, nd-router-advert } accept
     '';
 
+  wireguardInputRules = ''
+    # WireGuard: allow VPN tunnel from WAN
+    iifname ${WAN_IF} udp dport ${WG_PORT} ${lib.fw.mkLog "wg-tunnel" "accept"}
+  '';
+
+  wireguardForwardRules = builtins.concatStringsSep "\n" (
+    map (peer: let
+      vlanId = peer.vlan;
+      vlanIf = lib.custom.vlanIf vlanId;
+    in ''
+      iifname ${WG_IF} ip saddr ${peer.ip} oifname { ${vlanIf}, ${WAN_IF} } ${lib.fw.mkLog "wg-peer" "accept"}
+    '')
+    constants.wireguard.peers
+  );
+
   localInputRules = ''
     # Dumb allow all SSH for now...
-    tcp dport { 22, 3000, 3100, 8043, 8843 } ${lib.fw.mkLog "input" "accept"}
+    tcp dport { 22, 3000, 3100, 8043, 8843 } ${lib.fw.mkLog "mgmt-broad" "accept"}
 
     # DNS: all internal VLANs
-    iifname != ${WAN_IF} tcp dport 53 ${lib.fw.mkLog "input" "accept"}
-    iifname != ${WAN_IF} udp dport 53 ${lib.fw.mkLog "input" "accept"}
+    iifname != ${WAN_IF} tcp dport 53 ${lib.fw.mkLog "dns" "accept"}
+    iifname != ${WAN_IF} udp dport 53 ${lib.fw.mkLog "dns" "accept"}
 
     # DHCP: all internal VLANs
-    iifname != ${WAN_IF} udp dport 67 ${lib.fw.mkLog "input" "accept"}
+    iifname != ${WAN_IF} udp dport 67 ${lib.fw.mkLog "dhcp" "accept"}
 
     # SSH: MGMT VLAN only
-    iifname ${MGMT_IF} tcp dport 22 ${lib.fw.mkLog "input" "accept"}
+    iifname ${MGMT_IF} tcp dport 22 ${lib.fw.mkLog "ssh" "accept"}
 
     # AdGuard Home admin UI: MGMT VLAN only
-    iifname ${MGMT_IF} tcp dport 3000 ${lib.fw.mkLog "input" "accept"}
+    iifname ${MGMT_IF} tcp dport 3000 ${lib.fw.mkLog "adguard" "accept"}
 
     # Omada controller: MGMT VLAN only
-    iifname ${MGMT_IF} tcp dport { 8088, 8043, 8843 } ${lib.fw.mkLog "input" "accept"}
-    iifname ${MGMT_IF} udp dport { 27001, 29810 } ${lib.fw.mkLog "input" "accept"}
-    iifname ${MGMT_IF} tcp dport { 29811, 29812, 29813, 29814 } ${lib.fw.mkLog "input" "accept"}
+    iifname ${MGMT_IF} tcp dport { 8088, 8043, 8843 } ${lib.fw.mkLog "omada" "accept"}
+    iifname ${MGMT_IF} udp dport { 27001, 29810 } ${lib.fw.mkLog "omada" "accept"}
+    iifname ${MGMT_IF} tcp dport { 29811, 29812, 29813, 29814 } ${lib.fw.mkLog "omada" "accept"}
   '';
 
   icmpForwardRules = lib.optionalString constants.enableIPv6 ''
@@ -73,7 +90,6 @@
   '';
 
   nat = ''
-    # IPv4-only NAT table; inet is not used because IPv6 NAT is not needed
     table ip nat {
       # Runs before routing decisions; used for destination NAT (port forwarding)
       chain prerouting {
@@ -101,7 +117,7 @@
         type filter hook input priority filter; policy drop;
 
         # Drop incoming traffic without a known connection
-        ct state invalid limit rate 10/second ${lib.fw.mkLog "invalid" "drop"}
+        ct state invalid limit rate 10/second ${lib.fw.mkLog "ct-invalid" "drop"}
 
         # Accept incoming traffic with an associated outgoing traffic
         ct state established,related accept
@@ -115,6 +131,8 @@
         ${icmpInputRules}
         # Allow specific services from internal VLANs; all other router-destined traffic is dropped
         ${localInputRules}
+        # Allow WireGuard from WAN
+        ${wireguardInputRules}
         # Log and drop all other inbound traffic. The drop is technically redundant...
         limit rate 10/second ${lib.fw.mkLog "input" "drop"}
       }
@@ -125,7 +143,7 @@
         type filter hook forward priority filter; policy drop;
 
         # Drop packets that do not match any valid connection state
-        ct state invalid limit rate 10/second ${lib.fw.mkLog "invalid" "drop"}
+        ct state invalid limit rate 10/second ${lib.fw.mkLog "ct-invalid" "drop"}
         # Allow packets belonging to already-established or related connections
         ct state established,related accept
 
@@ -135,10 +153,13 @@
         ${icmpForwardRules}
 
         # Rate limit new TCP connections (SYN flood protection)
-        tcp flags syn ct state new limit rate 100/second ${lib.fw.mkLog "forward" "accept"}
+        tcp flags syn ct state new limit rate 100/second ${lib.fw.mkLog "new-conn" "accept"}
 
         # Allow forwarding of traffic for each configured port forward destination
         ${portForwardFilterRules}
+
+        # Allow WireGuard clients to route through the router
+        ${wireguardForwardRules}
 
         # VLAN rules: allow own subnet, block other private nets, allow WAN.
         # The oifname wan1 rule is protocol-agnostic and covers IPv6-to-WAN forwarding.

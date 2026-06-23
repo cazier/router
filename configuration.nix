@@ -83,6 +83,7 @@
       neovim
       tmux
       tree
+      wireguard-tools
 
       (pkgs.writeShellApplication {
         name = "nor";

@@ -9,10 +9,10 @@
 }: {
   imports = [
     ./firewall
+    ./networking
     ./services
 
     ./devices.nix
-    ./interfaces.nix
     ./virtualization.nix
     # Include the results of the hardware scan.
     ./hardware-configuration.nix

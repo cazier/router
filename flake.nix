@@ -3,25 +3,27 @@
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-26.05-small";
-    home-manager.url = "github:nix-community/home-manager/release-26.05";
-    home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
-    vscode-server.url = "github:nix-community/nixos-vscode-server";
-    nixpkgs-unstable.url = "nixpkgs/nixos-unstable-small";
+    home-manager = {
+      url = "github:nix-community/home-manager/release-26.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
-    firewalleye.url = "github:cazier/firewalleye/v0.5.0";
-    firewalleye.flake = false;
+    firewalleye = {
+      url = "github:cazier/firewalleye/v0.5.0";
+      flake = false;
+    };
 
-    agenix.url = "github:ryantm/agenix";
-    agenix.inputs.nixpkgs.follows = "nixpkgs";
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
     self,
     nixpkgs,
-    nixpkgs-unstable,
     home-manager,
-    vscode-server,
     firewalleye,
     agenix,
     ...
@@ -32,7 +34,6 @@
     constants = import ./constants.nix;
 
     system = "x86_64-linux";
-    unstable = nixpkgs-unstable.legacyPackages.${system};
 
     lib = nixpkgs.lib.extend (final: prev: {
       custom = import ./utilities/custom_functions.nix {lib = final;};
@@ -43,7 +44,7 @@
         inherit system lib;
 
         specialArgs = {
-          inherit hostname username constants timezone unstable firewalleye;
+          inherit hostname username constants timezone firewalleye;
         };
 
         modules = [
@@ -54,13 +55,10 @@
             home-manager = {
               users."${username}" = import ./home.nix;
               extraSpecialArgs = {
-                inherit username constants unstable;
+                inherit username constants;
               };
             };
           }
-
-          vscode-server.nixosModules.default
-          ({...}: {services.vscode-server.enable = true;})
 
           agenix.nixosModules.default
         ];

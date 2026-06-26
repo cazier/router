@@ -1,7 +1,6 @@
 {
   lib,
   pkgs,
-  unstable,
   username,
   ...
 }: {
@@ -9,7 +8,7 @@
     username = username;
     homeDirectory = "/home/${username}";
     stateVersion = "25.11";
-    packages = with unstable; [
+    packages = with pkgs; [
       prek
     ];
   };

@@ -63,9 +63,6 @@
   );
 
   localInputRules = ''
-    # Dumb allow all SSH for now...
-    tcp dport { 22, 3000, 3100, 8043, 8843 } ${lib.fw.mkLog "mgmt-broad" "accept"}
-
     # DNS: all internal VLANs
     iifname != ${WAN_IF} tcp dport 53 ${lib.fw.mkLog "dns" "accept"}
     iifname != ${WAN_IF} udp dport 53 ${lib.fw.mkLog "dns" "accept"}
@@ -73,7 +70,7 @@
     # DHCP: all internal VLANs
     iifname != ${WAN_IF} udp dport 67 ${lib.fw.mkLog "dhcp" "accept"}
 
-    # SSH: MGMT VLAN only
+    # SSH: MGMT VLAN
     iifname ${MGMT_IF} tcp dport 22 ${lib.fw.mkLog "ssh" "accept"}
 
     # AdGuard Home admin UI: MGMT VLAN only
@@ -83,6 +80,9 @@
     iifname ${MGMT_IF} tcp dport { 8088, 8043, 8843 } ${lib.fw.mkLog "omada" "accept"}
     iifname ${MGMT_IF} udp dport { 27001, 29810 } ${lib.fw.mkLog "omada" "accept"}
     iifname ${MGMT_IF} tcp dport { 29811, 29812, 29813, 29814 } ${lib.fw.mkLog "omada" "accept"}
+
+    # FireWalleye: MGMT VLAN only
+    iifname ${MGMT_IF} tcp dport { 8000 } ${lib.fw.mkLog "firewalleye" "accept"}
   '';
 
   icmpForwardRules = lib.optionalString constants.enableIPv6 ''

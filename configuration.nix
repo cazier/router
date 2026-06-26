@@ -50,6 +50,8 @@
     useNetworkd = true;
   };
 
+  programs.nix-ld.enable = true;
+
   time.timeZone = timezone;
 
   users.users.brendan = {

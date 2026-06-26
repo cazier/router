@@ -37,7 +37,7 @@
             })
           else {}
         ))
-  ) (lib.filterAttrs (_: cfg: !(cfg ? bond)) ethernets);
+  ) (lib.filterAttrs (_: cfg: !(cfg ? bond) && !(cfg ? bridge)) ethernets);
 
   bondMemberNetworks = lib.mapAttrs' (
     name: cfg:
@@ -50,6 +50,18 @@
         };
       }
   ) (lib.filterAttrs (_: cfg: cfg ? bond) ethernets);
+
+  bridgeMemberNetworks = lib.mapAttrs' (
+    name: cfg:
+      lib.nameValuePair "60-${name}" {
+        name = name;
+        networkConfig = {
+          Bridge = cfg.bridge;
+          DHCP = "no";
+        };
+        bridgeVLANs = map (id: {VLAN = id;}) constants.allVlanIds;
+      }
+  ) (lib.filterAttrs (_: cfg: cfg ? bridge) ethernets);
 
   bondDev = {
     "10-${constants.interfaces.bond}" = {
@@ -69,10 +81,26 @@
   bondNetwork = {
     "40-${constants.interfaces.bond}" = {
       matchConfig.Name = constants.interfaces.bond;
-      networkConfig = {
-        Address = lib.custom.updateSubnetMask (lib.custom.updateIpAtOctet baseSubnet 3 98) 32;
-        VLAN = map lib.custom.vlanIf (lib.lists.sort (p: q: p < q) constants.allVlanIds);
+      networkConfig.Bridge = constants.interfaces.bridge;
+      bridgeVLANs = map (id: {VLAN = id;}) constants.allVlanIds;
+    };
+  };
+
+  bridgeDev = {
+    "10-${constants.interfaces.bridge}" = {
+      netdevConfig = {
+        Name = constants.interfaces.bridge;
+        Kind = "bridge";
       };
+      bridgeConfig.VLANFiltering = true;
+    };
+  };
+
+  bridgeNetwork = {
+    "40-${constants.interfaces.bridge}" = {
+      matchConfig.Name = constants.interfaces.bridge;
+      networkConfig.VLAN = map lib.custom.vlanIf (lib.lists.sort (p: q: p < q) constants.allVlanIds);
+      bridgeVLANs = map (id: {VLAN = id;}) constants.allVlanIds;
     };
   };
 
@@ -108,7 +136,7 @@ in {
   systemd.network = {
     wait-online.enable = false;
     links = ethernetLinks;
-    netdevs = bondDev // vlanDevs;
-    networks = ethernetNetworks // bondMemberNetworks // bondNetwork // vlanNetworks;
+    netdevs = bondDev // bridgeDev // vlanDevs;
+    networks = ethernetNetworks // bondMemberNetworks // bridgeMemberNetworks // bondNetwork // bridgeNetwork // vlanNetworks;
   };
 }

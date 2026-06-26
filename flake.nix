@@ -2,8 +2,8 @@
   description = "NixOS-based firewall gateway and router";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-25.11-small";
-    home-manager.url = "github:nix-community/home-manager/release-25.11";
+    nixpkgs.url = "nixpkgs/nixos-26.05-small";
+    home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     vscode-server.url = "github:nix-community/nixos-vscode-server";
@@ -32,7 +32,6 @@
     constants = import ./constants.nix;
 
     system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
     unstable = nixpkgs-unstable.legacyPackages.${system};
 
     lib = nixpkgs.lib.extend (final: prev: {

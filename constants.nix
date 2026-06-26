@@ -12,6 +12,7 @@ rec {
   interfaces = {
     wan = "wan1";
     bond = "lagg0";
+    bridge = "int0";
   };
 
   ethernets = {
@@ -24,10 +25,6 @@ rec {
       address = "192.168.1.31/24";
       gateway = network.baseAddress;
     };
-    lan0 = {
-      mac = "bc:24:11:ec:e1:83";
-      address = "192.168.0.1/24";
-    };
     eth0 = {
       mac = "a0:36:9f:41:e6:d4";
       bond = interfaces.bond;
@@ -35,6 +32,10 @@ rec {
     eth1 = {
       mac = "a0:36:9f:41:e6:d5";
       bond = interfaces.bond;
+    };
+    vmbr0 = {
+      mac = "bc:24:11:de:c4:80";
+      bridge = interfaces.bridge;
     };
   };
 

@@ -36,7 +36,7 @@
     system = "x86_64-linux";
 
     lib = nixpkgs.lib.extend (final: prev: {
-      custom = import ./utilities/custom_functions.nix {lib = final;};
+      custom = import ./utilities/functions.nix {lib = final;};
     });
   in {
     nixosConfigurations = {

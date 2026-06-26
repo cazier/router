@@ -10,20 +10,16 @@ rec {
   };
 
   interfaces = {
-    wan = "wan1";
     bond = "lagg0";
     bridge = "int0";
+    wan = "wan0";
+    wireguard = "wg0";
   };
 
   ethernets = {
     wan0 = {
-      mac = "a0:36:9f:41:e6:d7";
+      mac = "a0:36:9f:41:e6:d6";
       dhcp = true;
-    };
-    wan1 = {
-      mac = "bc:24:11:13:05:c1";
-      address = "192.168.1.31/24";
-      gateway = network.baseAddress;
     };
     eth0 = {
       mac = "a0:36:9f:41:e6:d4";
@@ -68,7 +64,7 @@ rec {
   nflogGroup = 100;
 
   wireguard = {
-    interface = "wg0";
+    interface = interfaces.wireguard;
     port = 51820;
     address = "10.100.0.1/24";
     peers = [

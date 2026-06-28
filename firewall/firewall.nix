@@ -5,7 +5,7 @@
   WAN_IF = constants.interfaces.wan;
   DMZ_IF = lib.custom.vlanIf constants.vlans.DMZ;
   MGMT_IF = lib.custom.vlanIf constants.vlans.MGMT;
-  WG_IF = constants.wireguard.interface;
+  WG_IF = constants.interfaces.wireguard;
   WG_PORT = toString constants.wireguard.port;
 
   allVlanRules = builtins.concatStringsSep "\n" (

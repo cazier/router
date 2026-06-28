@@ -9,14 +9,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    firewalleye = {
-      url = "github:cazier/firewalleye/v0.5.0";
-      flake = false;
-    };
-
     agenix = {
       url = "github:ryantm/agenix";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    firewalleye = {
+      url = "github:cazier/firewalleye/v0.5.0";
+      flake = false;
     };
   };
 
@@ -24,8 +24,8 @@
     self,
     nixpkgs,
     home-manager,
-    firewalleye,
     agenix,
+    firewalleye,
     ...
   }: let
     hostname = "router";
@@ -44,7 +44,7 @@
         inherit system lib;
 
         specialArgs = {
-          inherit hostname username constants timezone firewalleye;
+          inherit agenix hostname username constants system timezone firewalleye;
         };
 
         modules = [

@@ -10,6 +10,7 @@
   imports = [
     ./firewall
     ./networking
+    ./secrets
     ./services
 
     ./devices.nix

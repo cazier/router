@@ -64,7 +64,6 @@ rec {
   nflogGroup = 100;
 
   wireguard = {
-    interface = interfaces.wireguard;
     port = 51820;
     address = "10.100.0.1/24";
     peers = [

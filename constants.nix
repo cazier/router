@@ -78,12 +78,12 @@ rec {
   portForwards = [
     # {
     #   port = 80;
-    #   proto = "tcp";
+    #   protocol = "tcp";
     #   dest = "192.168.${toString vlans.DMZ}.10";
     # }
     # {
     #   port = 443;
-    #   proto = "tcp";
+    #   protocol = "tcp";
     #   dest = "192.168.${toString vlans.DMZ}.10";
     # }
   ];

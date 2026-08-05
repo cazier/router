@@ -14,6 +14,19 @@
 
   bindHosts = lib.mapAttrsToList (_: id: "192.168.${toString id}.1") constants.vlans;
 in {
+  router.firewall.input = {
+    "dns" = {
+      not_from = "wan";
+      protocol = ["tcp" "udp"];
+      port = 53;
+    };
+    "adguard" = {
+      from = "MGMT";
+      protocol = "tcp";
+      port = 3000;
+    };
+  };
+
   services.adguardhome = {
     enable = true;
     settings = {

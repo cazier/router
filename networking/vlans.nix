@@ -35,6 +35,16 @@
     constants.allVlanIds
   );
 in {
+  router.firewall = {
+    input."dhcp" = {
+      not_from = "wan";
+      protocol = "udp";
+      port = 67;
+    };
+
+    vlans = builtins.mapAttrs (_: id: {inherit id;}) constants.vlans;
+  };
+
   systemd.network = {
     netdevs = netdevs;
     networks = networks;

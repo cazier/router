@@ -5,6 +5,7 @@
   pkgs,
   hostname,
   timezone,
+  constants,
   ...
 }: {
   imports = [
@@ -81,6 +82,7 @@
       evil-helix
       git
       gitui
+      jq
       nil
       nixd
       neovim
@@ -95,6 +97,23 @@
         '';
       })
     ];
+  };
+
+  router.firewall = {
+    enable = {
+      ipv4 = true;
+      ipv6 = false;
+    };
+
+    wan = constants.interfaces.wan;
+    logging.group = constants.nflogGroup;
+    portForwards = constants.portForwards;
+
+    input."ssh" = {
+      from = "MGMT";
+      protocol = "tcp";
+      port = 22;
+    };
   };
 
   services.openssh = {

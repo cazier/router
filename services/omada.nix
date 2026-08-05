@@ -22,6 +22,24 @@
     services = map (volume: volume.service) data;
   };
 in {
+  router.firewall.input = {
+    "omada_web" = {
+      from = "MGMT";
+      protocol = "tcp";
+      port = [8088 8043 8843];
+    };
+    "omada_discovery" = {
+      from = "MGMT";
+      protocol = "udp";
+      port = [27001 29810];
+    };
+    "omada_manage" = {
+      from = "MGMT";
+      protocol = "tcp";
+      port = [29811 29812 29813 29814];
+    };
+  };
+
   virtualisation.oci-containers = {
     backend = "podman";
     containers.omada-controller = {

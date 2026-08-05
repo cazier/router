@@ -38,23 +38,23 @@
         append = true;
         saveNoDups = true;
       };
+      historySubstringSearch = {
+        enable = true;
+        searchUpKey = "$terminfo[kcuu1]";
+        searchDownKey = "$terminfo[kcud1]";
+      };
       plugins = with pkgs; [
         {
           name = "zsh-completions";
           src = zsh-completions;
         }
       ];
-      initContent = lib.mkOrder 1400 ''
-        bindkey '^[OA' history-search-backward
-        bindkey '^[OB' history-search-forward
-        bindkey '^[[1;5D' backward-word
-        bindkey '^[[1;5C' forward-word
-      '';
       shellAliases = {
         cd = "pushd";
         ll = "ls -lah";
         gst = "git status";
         gp = "git push";
+        cat = "bat";
       };
     };
   };

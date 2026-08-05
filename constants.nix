@@ -54,15 +54,6 @@ rec {
 
   allVlanIds = builtins.attrValues vlans;
 
-  dhcp = {
-    poolOffset = 100;
-    poolSize = 100;
-  };
-
-  enableIPv6 = true;
-
-  nflogGroup = 100;
-
   wireguard = {
     port = 51820;
     address = "10.100.0.1/24";

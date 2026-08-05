@@ -91,6 +91,12 @@
     }
   '';
 
+  # Block ALL traffic from each IP family if they're disabled
+  blockIPFamilyRules = lib.flatten [
+    (lib.optional (!cfg.enable.ipv4) "meta nfproto ipv4 ${mkLog "ipv4" "drop"}")
+    (lib.optional (!cfg.enable.ipv6) "meta nfproto ipv6 ${mkLog "ipv6" "drop"}")
+  ];
+
   # Connection-tracking rules shared by both chains
   connectionRules = lib.flatten [
     # Drop packets nftables can't associate with any known connection
@@ -166,6 +172,8 @@
               (mkCompileInterface mkIifaceMatch entry "from")
               # Match protocols and destination ports, if provided
               (nullableString entry.protocol "meta l4proto ${toNFTSet entry.protocol}" + lib.optionalString (entry.port != null) " th dport ${toNFTSet entry.port}")
+              # Extra raw statement(s), if provided
+              (nullableString entry.extra entry.extra)
               # Log and apply the entry's configured verdict
               (mkLog name entry.action)
             ]
@@ -180,8 +188,7 @@
       inherit (entry) dest protocol port;
       from = "wan";
       to = "DMZ";
-      connection = true;
-      rateLimit = "25/second";
+      extra = "ct state new limit rate 25/second";
       action = "accept";
     })
   cfg.portForwards);
@@ -202,10 +209,8 @@
               (nullableString entry.dest "ip daddr ${entry.dest}")
               # Match protocols and destination ports, if provided
               (nullableString entry.protocol "meta l4proto ${toNFTSet entry.protocol}" + lib.optionalString (entry.port != null) " th dport ${toNFTSet entry.port}")
-              # Only match new connections (only for port forwards)
-              (nullableString (entry.connection or null) "ct state new")
-              # Rate-limit the match (only for port forwards)
-              (nullableString (entry.rateLimit or null) "limit rate ${entry.rateLimit}")
+              # Extra raw statement(s), if provided
+              (nullableString entry.extra entry.extra)
               # Log and apply the entry's configured verdict
               (mkLog name entry.action)
             ]
@@ -215,6 +220,7 @@
     (cfg.forward // portForwardEntries);
 
   inputRules = lib.flatten [
+    blockIPFamilyRules
     connectionRules
     # Always allow loopback traffic
     "iifname lo ${mkLog "lo" "accept"}"
@@ -227,6 +233,7 @@
   ];
 
   forwardRules = lib.flatten [
+    blockIPFamilyRules
     connectionRules
     dropBogonRules
     icmpForwardRules

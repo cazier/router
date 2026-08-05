@@ -106,7 +106,6 @@
     };
 
     wan = constants.interfaces.wan;
-    logging.group = constants.nflogGroup;
     portForwards = constants.portForwards;
 
     input."ssh" = {

@@ -70,6 +70,7 @@ in {
       from = "wan";
       protocol = "udp";
       port = wireguard.port;
+      extra = "ct state new limit rate 10/second";
     };
 
     forward = wireguardForwardRules;

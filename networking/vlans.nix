@@ -3,7 +3,6 @@
   constants,
   ...
 }: let
-  inherit (constants) dhcp;
   inherit (constants.network) baseAddress baseSubnet;
 
   netdevs = lib.listToAttrs (
@@ -27,8 +26,8 @@
           DHCPServer = true;
         };
         dhcpServerConfig = {
-          PoolOffset = dhcp.poolOffset;
-          PoolSize = dhcp.poolSize;
+          PoolOffset = 100;
+          PoolSize = 100;
           DNS = lib.custom.updateIpAtOctet baseAddress 3 id;
         };
       })

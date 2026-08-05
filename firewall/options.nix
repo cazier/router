@@ -41,6 +41,15 @@
       default = "accept";
       description = "Action taken on the traffic";
     };
+
+    extra = lib.mkOption {
+      type = nullOr str;
+      default = null;
+      description = ''
+        Extra nftables statements inserted into the compiled rule before the logging/verdict clause.
+        Used for anything that isn't included in the other explicit options.
+      '';
+    };
   };
 in
   with lib; {

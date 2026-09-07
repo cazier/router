@@ -9,8 +9,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    agenix = {
-      url = "github:ryantm/agenix";
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -24,7 +24,7 @@
     self,
     nixpkgs,
     home-manager,
-    agenix,
+    sops-nix,
     firewalleye,
     ...
   }: let
@@ -44,7 +44,7 @@
         inherit system lib;
 
         specialArgs = {
-          inherit agenix hostname username constants system timezone firewalleye;
+          inherit hostname username constants system timezone firewalleye;
         };
 
         modules = [
@@ -60,7 +60,7 @@
             };
           }
 
-          agenix.nixosModules.default
+          sops-nix.nixosModules.sops
         ];
       };
     };

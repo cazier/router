@@ -1,12 +1,17 @@
-{
-  agenix,
-  pkgs,
-  system,
-  ...
-}: {
-  age.identityPaths = ["/var/lib/age/keyfile"];
+{pkgs, ...}: {
+  sops = {
+    # Each `sops.secrets.<name>` sets its own `sopsFile` (see networking/, services/).
+    defaultSopsFile = ./wireguard.yaml;
+    age = {
+      keyFile = "/var/lib/sops/keyfile";
+      # Only decrypt with the PQC keyfile; never an SSH host key
+      sshKeyPaths = [];
+    };
+    gnupg.sshKeyPaths = [];
+  };
 
-  environment.systemPackages = [
-    agenix.packages."${system}".default
+  environment.systemPackages = with pkgs; [
+    age
+    sops
   ];
 }

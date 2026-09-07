@@ -4,27 +4,19 @@
   lib,
   ...
 }: let
-  cfg = config.router.firewall;
-
   wgIf = constants.interfaces.wireguard;
   inherit (constants) wireguard;
 
-  indexedPeers = lib.imap0 (index: peer: {inherit index peer;}) wireguard.peers;
-
-  wireguardForwardRules = builtins.listToAttrs (map (
-      {
-        index,
-        peer,
-      }: let
-        vlanName = lib.findFirst (name: cfg.vlans.${name}.id == peer.vlan) null (builtins.attrNames cfg.vlans);
-      in
-        lib.nameValuePair "wg-peer_${toString index}" {
+  wireguardForwardRules =
+    lib.mapAttrs' (
+      name: peer:
+        lib.nameValuePair "wg-peer_${name}" {
           from = wgIf;
-          to = [vlanName "wan"];
+          to = peer.vlans ++ ["wan"];
           source = peer.ip;
         }
     )
-    indexedPeers);
+    wireguard.peers;
 
   netdevs = {
     "90-${wgIf}" = {
@@ -33,19 +25,16 @@
         Kind = "wireguard";
       };
       wireguardConfig = {
-        PrivateKeyFile = config.age.secrets.wireguard-private-key.path;
+        PrivateKeyFile = config.sops.secrets.wireguard-private-key.path;
         ListenPort = wireguard.port;
       };
       wireguardPeers =
-        map ({
-          index,
-          peer,
-        }: {
+        lib.mapAttrsToList (name: peer: {
           PublicKey = peer.publicKey;
           AllowedIPs = "${peer.ip}/32";
-          PresharedKeyFile = config.age.secrets."wireguard-peer-${toString index}-psk".path;
+          PresharedKeyFile = config.sops.secrets."wireguard-peer-${name}-psk".path;
         })
-        indexedPeers;
+        wireguard.peers;
     };
   };
 
@@ -56,14 +45,15 @@
     };
   };
 
-  pskSecrets = builtins.listToAttrs (map ({index, ...}: {
-      name = "wireguard-peer-${toString index}-psk";
+  pskSecrets =
+    lib.mapAttrs' (name: _: {
+      name = "wireguard-peer-${name}-psk";
       value = {
-        file = ../secrets/wireguard-peer-${toString index}-psk.age;
+        sopsFile = ../secrets/wireguard.yaml;
         owner = "systemd-network";
       };
     })
-    indexedPeers);
+    wireguard.peers;
 in {
   router.firewall = {
     input."wireguard" = {
@@ -76,10 +66,10 @@ in {
     forward = wireguardForwardRules;
   };
 
-  age.secrets =
+  sops.secrets =
     {
       wireguard-private-key = {
-        file = ../secrets/wireguard-private-key.age;
+        sopsFile = ../secrets/wireguard.yaml;
         owner = "systemd-network";
       };
     }

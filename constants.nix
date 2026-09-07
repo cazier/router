@@ -57,13 +57,13 @@ rec {
   wireguard = {
     port = 51820;
     address = "10.100.0.1/24";
-    peers = [
-      {
+    peers = {
+      home = {
         publicKey = "9drfei4FNNDjMyDH9aknYvP2qU6O+KT8/jxc7DpSU2A=";
         ip = "10.100.0.2";
-        vlan = vlans.HOME;
-      }
-    ];
+        vlans = ["HOME" "MGMT"];
+      };
+    };
   };
 
   portForwards = [

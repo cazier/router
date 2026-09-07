@@ -32,16 +32,35 @@
     gpg.enable = true;
     starship.enable = true;
 
+    tmux = {
+      enable = true;
+      baseIndex = 1;
+      mouse = true;
+      newSession = true;
+      clock24 = true;
+      keyMode = "vi";
+      terminal = "tmux-256color";
+      historyLimit = 10000;
+      extraConfig = ''
+        set -g set-clipboard on
+        set -as terminal-features ",*:RGB"
+      '';
+      plugins = with pkgs; [
+        {
+          plugin = tmuxPlugins.catppuccin;
+          extraConfig = ''
+            set -g @catppuccin_flavor "macchiato"
+          '';
+        }
+      ];
+    };
+
     zsh = {
       enable = true;
+      oh-my-zsh.enable = true;
       history = {
         append = true;
         saveNoDups = true;
-      };
-      historySubstringSearch = {
-        enable = true;
-        searchUpKey = "$terminfo[kcuu1]";
-        searchDownKey = "$terminfo[kcud1]";
       };
       plugins = with pkgs; [
         {

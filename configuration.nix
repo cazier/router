@@ -20,10 +20,13 @@
     ./hardware-configuration.nix
   ];
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix = {
+    package = pkgs.lixPackageSets.stable.lix;
+    settings.experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+  };
 
   fileSystems = {
     "/".options = ["compress=zstd"];

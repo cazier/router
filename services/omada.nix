@@ -43,7 +43,7 @@ in {
   virtualisation.oci-containers = {
     backend = "podman";
     containers.omada-controller = {
-      image = "mbentley/omada-controller:6.1";
+      image = "mbentley/omada-controller:6.3-openj9";
       environment = {
         TZ = timezone;
         WEB_CONFIG_OVERRIDE = "false";
